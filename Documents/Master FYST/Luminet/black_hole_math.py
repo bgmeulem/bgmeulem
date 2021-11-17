@@ -23,12 +23,13 @@ def b(P_: float, M: float, tol: float = 1e-5) -> float:
 
 
 def P(b_, M):
-    a = 2. * M
-    denom1 = (np.sqrt(3) * np.sqrt(27. * a ** 2 * b_ ** 2 - 4. * b_ ** 3) - 9. * a * b_) ** (1 / 3)
-    denom2 = 2. ** (1 / 3.) * 3 ** (2. / 3.)
-    num1 = (2. * b_ / 3.) ** (1. / 3.)
-    num2 = denom1
-    return num1 / denom1 + num2 / denom2
+    num1 = b_
+    num2 = (mpmath.sqrt(3) * mpmath.sqrt(27. * M ** 2 * b_ ** 2 - b_ ** 3)
+            - 9. * M * b_) ** (1 / 3)  # generally complex
+    denom1 = num2 * 3 ** (1 / 3)
+    denom2 = 3 ** (2 / 3)
+    s = (num1 / denom1 + num2 / denom2).__abs__()  # generally a negligible complex part
+    return s
 
 
 def getRoots(P: float, M: float) -> (float, float, float):
@@ -107,7 +108,7 @@ def filterP(P: np.ndarray, M: float, tol: float = 10e-4) -> Tuple[np.ndarray, np
         del to_return[to_remove[0]:to_remove[-1]]
     elif len(to_remove) == 1:
         to_return = np.delete(to_return, to_remove[0])
-    return to_return, to_remove
+    return list(to_return), to_remove
 
 
 def eq13(P: float, r: float, a: float, M: float, incl: float, n: int = 0) -> float:
@@ -168,52 +169,45 @@ def writeFramesEq13(radius: float, solver_params: Dict, incl: float = 10., M: fl
         fig.savefig('movie/frame{:03d}.png'.format(n))
 
 
-def findP(r, incl, alpha, M, root_precision=100, plot_inbetween=False, iterations=2,
-          n=0, minP=2):
-    """Given a value for r (BH frame) and alpha (BH/observer frame), calculate the corresponding periastron value(s)"""
+def findP(r, incl, alpha, M, midpoint_iterations=100, plot_inbetween=False,
+          n=0, minP=2, initial_guesses=20):
+    """Given a value for r (BH frame) and alpha (BH/observer frame), calculate the corresponding periastron value"""
 
-    def eq13_P(P_, r_=r, alpha_=alpha, M_=M, incl_=incl):
-        return eq13(P_, r_, alpha_, M_, incl_, n)  # solve this equation for P
+    def eq13_P(P_, r_, alpha_, M_, incl_, n_):
+        return eq13(P_, r_, alpha_, M_, incl_, n_)  # solve this equation for P
 
-    def findZeroes(x, y):
-        zero_crossings = np.where(np.diff(np.sign(y)))
-        P_ = x[zero_crossings]
-        return P_
-
-    def checkClosest(value, list_):
-        """Check which elements of list2 are closest to value"""
-        d = [np.abs(e - value) for e in list_]
-        s = d.index(min(d))  # index of element in list closest to value
-        return s
-
-    def updateSingleP(originalP, expansion_radius_, root_precision_, M_=M):
+    def MidpointMethodP(x, y, ind, radius, angle, M_, inclination, n_):
         # for each P point, look around the point within expansion radius and find crossing more accurately
-        startX, endX = max([0.01,
-                            originalP - expansion_radius_ / 2]), originalP + expansion_radius_ / 2  # P should never be 0 -> ZeroDivisionErrors
-        x2 = np.linspace(startX, endX, root_precision_)
-        x2, removed = filterP(x2, M_)  # filter out where P == 2*M (zero division)
-        y2 = [eq13_P(float(x_)) for x_ in x2]  # values of eq13
-        new_zeroes = findZeroes(x2, y2)
-        # updated_P[i] = new_zeroes[0]
-        if len(new_zeroes) == 1:
-            updated_single_P = new_zeroes[0]
-        else:  # more than one zero crossing found in newly divided range: pick correct one
-            closest_element = checkClosest(originalP, new_zeroes)  # check which one is closest to original solution
-            updated_single_P = new_zeroes[closest_element]
-        return updated_single_P
+        # for each P point, look around the point within expansion radius and find crossing more accurately
+        new_x = x
+        new_y = y
 
-    def updateP(P_, original_range, iterations=iterations,
-                root_precision=root_precision):
+        x_ = [x[ind], x[ind + 1]]  # interval of P values
+        inbetween_P = np.mean(x_)
+        new_x.insert(ind + 1, inbetween_P)  # insert middle P value to calculate
+
+        y_ = [y[ind], y[ind + 1]]  # results of eq13 given the P values
+        # calculate the P value inbetween
+        inbetween_solution = eq13_P(P_=inbetween_P, r_=radius, alpha_=angle, M_=M_, incl_=inclination, n_=n_)
+        new_y.insert(ind + 1, inbetween_solution)
+        y_.insert(1, inbetween_solution)
+        new_ind = ind + np.where(np.diff(np.sign(y_)))[0][0]
+
+        return new_x, new_y, new_ind  # return x and y refined in relevant regions, as well as new index of sign change
+
+    def improveP(P_, x, y, indices_of_signchange, iterations, radius, angle, M_, inclination, n_):
         """To increase precision.
         Only considers the function within the expansion radius around the solutions in P_.
         Searches again for a solution with a precision root_precision"""
         updated_P = P_
-        bin_width = (max(original_range) - min(original_range)) / root_precision
-        exp_r = 3 * bin_width  # expansion_radius dependent on bin width
-        for iteration in range(iterations - 1):
-            exp_r = exp_r / (iteration + 1)  # zoom in further and further around solution
-            for i, p in enumerate(P_):
-                updated_P[i] = updateSingleP(P_[i], exp_r, root_precision)
+        indices_of_signchange_ = indices_of_signchange
+        for i in range(len(indices_of_signchange_)):  # update each solution of P
+            new_x = x
+            new_y = y
+            new_ind = indices_of_signchange[i]
+            for iteration in range(iterations):
+                new_x, new_y, new_ind = MidpointMethodP(new_x, new_y, new_ind, radius, angle, M_, inclination, n_)
+            updated_P[i] = new_x[new_ind]
         return updated_P
 
     def getPlot(X, Y, solutions, radius=r):
@@ -227,16 +221,18 @@ def findP(r, incl, alpha, M, root_precision=100, plot_inbetween=False, iteration
             plt.scatter(P_, 0, color='red')
         return plt
 
-    x, _ = filterP(np.linspace(1., 1.01 * r, root_precision), M)  # range of P values without P == 2
-    y = [eq13_P(float(x_)) for x_ in x]  # values of eq13
-    P = findZeroes(x, y)  # one or three zero crossings
-    if minP:
-        P = [e for e in P if e > minP]
-    P = updateP(P, original_range=x)  # get better P values
-
-    if plot_inbetween:
-        getPlot(x, y, P).show()
-    return P
+    x, _ = filterP(np.linspace(minP, 1.01 * r, initial_guesses), M)  # range of P values without P == 2*M
+    y = [eq13_P(float(x_), r, alpha, M, incl, n) for x_ in x]  # values of eq13
+    ind = np.where(np.diff(np.sign(y)))[0]
+    P = [x[i] for i in ind]  # initial guesses
+    if any(P):
+        P = improveP(P, x, y, ind, midpoint_iterations, r, alpha, M, incl, n)  # get better P values
+        if plot_inbetween:
+            getPlot(x, y, P).show()
+        return P
+    else:
+        # TODO: implement newtonian ellipse
+        return None
 
 
 def phi_inf(P, M):
@@ -283,7 +279,7 @@ def flux_intrinsic(r, acc, M):
 
 def redshift_factor(radius, angle, incl, M, b_):
     """Calculate the redshift factor (1 + z), ignoring cosmological redshift."""
-    return (1. - 3. * M / radius) ** -.5 * (1. + (M / radius ** 3) ** .5 * b_ * np.sin(incl) * np.sin(angle))
+    return (1. + np.sqrt((M / radius ** 3)) * b_ * np.sin(incl) * np.sin(angle)) / np.sqrt((1. - 3. * M / radius))
 
 
 def find_a(b_, z, incl, M, r_):
@@ -292,7 +288,6 @@ def find_a(b_, z, incl, M, r_):
     radius = np.linspace(3 * M, 100 * M, len(b_)) if not r_ else r_
 
     sin_angle = ((1. + z) * np.sqrt(1. - 3. * M / radius) - 1) / ((M / radius ** 3) ** .5 * b_ * np.sin(incl))
-    print(sin_angle)
     return np.arcsin(sin_angle)
 
 
@@ -300,7 +295,7 @@ if __name__ == '__main__':
     blist = []
     alist = []
     for r in [6, 10, 20, 30, 50]:
-        b = np.linspace(3, 50)
+        b = np.linspace(3, 20)
         a = find_a(b, z=0.1, incl=10, M=1, r_=r)
         blist.append(b)
         alist.append(a)
