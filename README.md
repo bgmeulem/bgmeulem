@@ -13,8 +13,8 @@ My thesis explored the possibilities of applying supervised machine learning on 
 As means of a hobby project, as well as an exercise to sharpen my Python skills, I've taken it upon me to recreate Luminet's famous 1979 paper 'Image of a Spherical Black Hole with Thin Accretion Disk' in Python. The progress of this project can be inspected on the repo [bgmeulem/Luminet](https://github.com/bgmeulem/Luminet)
 
 <p align="middle">
-<img src="https://github.com/bgmeulem/Luminet/blob/master/movie/BH_with_redshift.gif?raw=true" max_width="400" max_height="400"/>
+<img src="https://github.com/bgmeulem/Luminet/blob/master/movie/BH_with_redshift.gif?raw=true" max_width="400" max_height="400"
 |
-<img src="https://github.com/bgmeulem/Luminet/blob/master/SampledPoints_incl=10.png" max_width="400" max_height="400"/>
+src="https://github.com/bgmeulem/Luminet/blob/master/SampledPoints_incl=10.png" max_width="400" max_height="400"/>
 </p>
 
