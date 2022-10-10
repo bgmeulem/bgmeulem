@@ -1,7 +1,6 @@
 # bgmeulem
 
 Hi! I'm Bjorge Meulemeester. Welcome to my git profile.
-As a MSc Physics and Astronomy, my interests lie mainly in astronomy, biophysics and physics of life.
 
 # Biophysics
 My thesis explored the possibilities of applying supervised machine learning on clinical Carto (Biosense Webster inc.) mapping data. This involved lots of simulations and a fair deal of mesh (re)construction. The repo [bgmeulem/Reconstruct_Carto](https://github.com/bgmeulem/Reconstruct_CARTO) showcases cleaned code capable of reconstructing clinical Carto data to a mesh that can be used for electrophysiological simulations. This repo is now featured on [openCARP's modeling resources](https://opencarp.org/community/modeling-resources#mesh-generation-tools).
