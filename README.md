@@ -7,6 +7,8 @@ I'm currently pursuing a PhD in computational neuroscience. I'm the maintainer o
 
 https://github.com/user-attachments/assets/f92b042f-41e0-4041-a063-c7c94b5fa2b8
 
+> The response of a layer 5 pyramidal neuron in the rat barrel cortex to an airpuff to the whiskers. Reconstructed from and constrained with in vivo data. Simulated with ISF (using NEURON) and visualized in blender. 
+
 # Astronomy
 As means of a hobby project, as well as an exercise to sharpen my Python skills, I've recreated Luminet's famous 1979 paper 'Image of a Spherical Black Hole with Thin Accretion Disk' in Python. You can find the source code at [bgmeulem/Luminet](https://github.com/bgmeulem/luminet). Package available from the Anaconda and PyPI repositories.
 
